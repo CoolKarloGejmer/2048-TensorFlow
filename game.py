@@ -152,3 +152,5 @@ if __name__ == '__main__':
 
         if keepRunning == False:
             break
+    
+    pygame.quit()
