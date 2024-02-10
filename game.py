@@ -3,7 +3,14 @@ from os.path import join
 from os import getcwd
 import pygame
 import numpy as np
-import glob
+from glob import glob
+from enum import Enum
+
+class Direction(Enum):
+    LEFT = 0
+    UP = 1
+    RIGHT = 2
+    DOWN = 3
 
 class Game:
     def __init__(self, size = 5, width=1500, height=1000):
@@ -15,7 +22,7 @@ class Game:
         self.width = max(width, self.size*self.tileSize)
         self.height = max(height, self.size*self.tileSize)
         self.screen = self.createScreen()
-        self.drawnTiles = self.drawGrid()
+        self.drawnTiles = self.drawGrid(borderColor=(0,0,0))
 
         self.grid = np.zeros((size,size),dtype=int)
         self.numbersDir = self.getNumbers()
@@ -27,7 +34,7 @@ class Game:
         pygame.display.flip()
         return screen
     
-    def drawGrid(self):
+    def drawGrid(self,borderColor):
         startPoint=[(self.width/2)-(self.tileSize*self.size/2),
                     (self.height/2)-(self.tileSize*self.size/2)]
         borderWidth=round(self.tileSize*0.01)
@@ -45,7 +52,7 @@ class Game:
             inner_rect = pygame.Rect(position[0],position[1],self.tileSize,self.tileSize)
             outer_rect=pygame.Rect(position[0] + borderWidth, position[1] + borderWidth,
                                    self.tileSize - borderWidth*2, self.tileSize - borderWidth*2)
-            pygame.draw.rect(self.screen,(0,0,0),inner_rect)
+            pygame.draw.rect(self.screen,borderColor,inner_rect)
             pygame.draw.rect(self.screen,(160,160,160),outer_rect)
         pygame.display.flip()
 
@@ -58,7 +65,7 @@ class Game:
         folder_path = join(current_directory, "numbers")
 
         pattern = join(folder_path, "*.png")
-        numbers = glob.glob(pattern)
+        numbers = glob(pattern)
 
         return numbers
 
@@ -91,17 +98,80 @@ class Game:
             self.screen.blit(image2,(position[0],position[1]))
             self.grid[position[2]][position[3]]=2
         pygame.display.flip()
-        print(self.grid)
 
-    def move(self,keys):
+    def updateScreen():
+        return
+
+    def moveNonZero(self,row):
+        updatedRow=[]
+        for element in row:
+                if element != 0:
+                    updatedRow.append(element)
+        
+        return updatedRow
+
+
+    def merge(self,row):
+        for i in range(len(row) - 1):
+            if row[i] == row[i + 1]:
+                row[i] *= 2
+                row[i + 1] = 0
+
+        while len(row) != self.size:
+            row.append(0)
+        
+        return row
+    
+    def slide(self,direction):
+        print('default: \n',self.grid)
+        if direction == Direction.LEFT:
+            grid = self.grid
+            timesRotated = 0
+        elif direction == Direction.UP:
+            grid = np.rot90(self.grid)
+            timesRotated = 1
+        elif direction == Direction.RIGHT:
+            grid = np.rot90(self.grid,2)
+            timesRotated = 2
+        elif direction == Direction.DOWN:
+            grid = np.rot90(self.grid,3)
+            timesRotated = 3
+
+        print('roated: \n',grid)
+
+        updatedGrid = []
+        for row in grid:
+            updatedRow = self.moveNonZero(row)
+            updatedRow = self.merge(updatedRow)
+            updatedGrid.append(updatedRow)
+
+        updatedGrid = np.array(updatedGrid)
+        for i in range(timesRotated):
+            updatedGrid = np.rot90(updatedGrid,-1)
+        print('final: \n',updatedGrid)
+
+        self.grid = updatedGrid
+
+    def move(self,keys,emptySpots):
         if keys[pygame.K_LEFT]:
-            return
+            direction = Direction.LEFT
+            self.slide(direction)
+
         elif keys[pygame.K_UP]:
-            return
+            direction = Direction.UP
+            self.slide(direction)
+
         elif keys[pygame.K_RIGHT]:
-            return
+            direction = Direction.RIGHT
+            self.slide(direction)
+
         elif keys[pygame.K_DOWN]:
-            return
+            direction = Direction.DOWN
+            self.slide(direction)
+
+        self.putNumber(emptySpots,self.step)
+            
+            
         
 
     def play(self):
@@ -122,12 +192,10 @@ class Game:
 
                     emptySpots = game.getEmptySpots()
                     if game.isGameOver(emptySpots) != True:
-                        game.putNumber(emptySpots,self.step)
+                        keys = pygame.key.get_pressed()
+                        game.move(keys,emptySpots)
                     else:
                         running=False
-                    
-                    keys = pygame.key.get_pressed()
-                    game.move(keys)
 
         if keepRunning == False:
             return False
