@@ -123,7 +123,6 @@ class Game:
         return row
     
     def slide(self,direction):
-        print('default: \n',self.grid)
         if direction == Direction.LEFT:
             grid = self.grid
             timesRotated = 0
@@ -137,8 +136,6 @@ class Game:
             grid = np.rot90(self.grid,3)
             timesRotated = 3
 
-        print('roated: \n',grid)
-
         updatedGrid = []
         for row in grid:
             updatedRow = self.moveNonZero(row)
@@ -148,7 +145,6 @@ class Game:
         updatedGrid = np.array(updatedGrid)
         for i in range(timesRotated):
             updatedGrid = np.rot90(updatedGrid,-1)
-        print('final: \n',updatedGrid)
 
         self.grid = updatedGrid
 
@@ -194,6 +190,7 @@ class Game:
                     if game.isGameOver(emptySpots) != True:
                         keys = pygame.key.get_pressed()
                         game.move(keys,emptySpots)
+                        print(self.grid)
                     else:
                         running=False
 
