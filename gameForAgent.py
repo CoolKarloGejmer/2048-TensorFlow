@@ -6,6 +6,7 @@ from re import findall
 import pygame
 import numpy as np
 import random
+import time
 
 class Direction(Enum):
     LEFT = 0
@@ -14,7 +15,7 @@ class Direction(Enum):
     DOWN = 3
 
 class Game:
-    def __init__(self, size = 10, width=1500, height=1000):
+    def __init__(self, size = 5, width=1500, height=1000):
         pygame.init()
         self.size = size
         self.tileSize = 150
@@ -31,6 +32,9 @@ class Game:
 
         self.grid = np.zeros((size,size),dtype=int)
         self.numbersDir = self.getNumbers()
+
+        emptySpots = self.getEmptySpots()
+        self.putNumber(emptySpots,self.step)
 
     def createScreen(self):
         screen = pygame.display.set_mode( (self.width, self.height) )
@@ -99,28 +103,29 @@ class Game:
         return np.array(emptySpots,dtype=int)
     
     def putNumber(self,emptySpots,step):
-        choice = random.randint(1,10)
-        if choice == 1:
-            imageLoad = self.numbersDir[2]
-            imageValue = self.numbersDir[3]
-        else:
-            imageLoad = self.numbersDir[0]
-            imageValue = self.numbersDir[1]
-        imageLoad = pygame.image.load(imageLoad)
-        imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
-    
-        if step == -1:
-            spot = random.sample(range(len(emptySpots)), 2)
-            spot = (emptySpots[spot][:2][:2])
-        else:
-            spot = random.sample(range(len(emptySpots)), 1)
-            spot = emptySpots[spot][:2]
+        if emptySpots.size != 0:
+            choice = random.randint(1,10)
+            if choice == 1:
+                imageLoad = self.numbersDir[2]
+                imageValue = self.numbersDir[3]
+            else:
+                imageLoad = self.numbersDir[0]
+                imageValue = self.numbersDir[1]
+            imageLoad = pygame.image.load(imageLoad)
+            imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
+        
+            if step == -1:
+                spot = random.sample(range(len(emptySpots)), 2)
+                spot = (emptySpots[spot][:2][:2])
+            else:
+                spot = random.sample(range(len(emptySpots)), 1)
+                spot = emptySpots[spot][:2]
 
-        for position in spot:
-            self.screen.blit(imageLoad,(position[0],position[1]))
-            self.grid[position[2]][position[3]]=imageValue
-        pygame.display.flip()
-        self.step+=1
+            for position in spot:
+                self.screen.blit(imageLoad,(position[0],position[1]))
+                self.grid[position[2]][position[3]]=imageValue
+            pygame.display.flip()
+            self.step+=1
 
     def updateScreen(self):
         for row in range(len(self.grid)):
@@ -192,23 +197,19 @@ class Game:
 
         self.grid = updatedGrid
 
-    def move(self,keys):
+    def move(self,action):
         grid = self.grid
-        if keys[pygame.K_LEFT]:
-            direction = Direction.LEFT
-            self.slide(direction)
+        if action == Direction.LEFT.value:
+            self.slide(Direction.LEFT)
 
-        elif keys[pygame.K_UP]:
-            direction = Direction.UP
-            self.slide(direction)
+        elif action == Direction.UP.value:
+            self.slide(Direction.UP)
 
-        elif keys[pygame.K_RIGHT]:
-            direction = Direction.RIGHT
-            self.slide(direction)
+        elif action == Direction.RIGHT.value:
+            self.slide(Direction.RIGHT)
 
-        elif keys[pygame.K_DOWN]:
-            direction = Direction.DOWN
-            self.slide(direction)
+        elif action == Direction.DOWN.value:
+            self.slide(Direction.DOWN)
 
         if (grid == self.grid).all():
             return False
@@ -216,39 +217,21 @@ class Game:
             self.putNumber(self.getEmptySpots(),self.step)
             return True
 
-    def play(self):
+    def play(self,action):
         keepRunning = True
-        running = True
 
         changed = True
+
         emptySpots = self.getEmptySpots()
-        self.putNumber(emptySpots,self.step)
-
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    keepRunning = False
-                    running = False
-
-                elif event.type == pygame.KEYDOWN:
-                    emptySpots = self.getEmptySpots()
-                    if self.isGameOver(emptySpots) != True:
-                        keys = pygame.key.get_pressed()
-                        changed = self.move(keys)
-                        
-                        print('score: ',self.score,'step: ',self.step,'\ngrid: \n',self.grid)
-                    else:
-                        running=False
-                    
-                    if changed:
-                        self.updateScreen()
-
-        if keepRunning == False:
-            return False
+        if self.isGameOver(emptySpots) != True:
+            changed = self.move(action)
         else:
-            return True
-
-
+            return [False,keepRunning]
+        
+        if changed:
+            self.updateScreen()
+        
+        return [True,keepRunning]
 
     def isGameOver(self,emptySpots):
         if emptySpots.size == 0:
@@ -258,13 +241,3 @@ class Game:
         else:
             return False
                     
-            
-if __name__ == '__main__':
-    while True:
-        game = Game()
-        keepRunning = game.play()
-
-        if keepRunning == False:
-            break
-    
-    pygame.quit()
