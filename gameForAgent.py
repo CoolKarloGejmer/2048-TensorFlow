@@ -223,7 +223,7 @@ class Game:
         changed = True
 
         emptySpots = self.getEmptySpots()
-        if self.isGameOver(emptySpots) != True:
+        if self.isGameOver(emptySpots,action) != True:
             changed = self.move(action)
         else:
             return [False,keepRunning]
@@ -233,11 +233,18 @@ class Game:
         
         return [True,keepRunning]
 
-    def isGameOver(self,emptySpots):
+    def isGameOver(self,emptySpots,action):
         if emptySpots.size == 0:
+            self.move(action)
+            if self.getEmptySpots().size == 0:
+                for i in range(3):
+                    self.move(i)
+                    if self.getEmptySpots().size != 0:
+                        self.updateScreen()
+                        return False
             print('game over')
             print(self.score)
             return True
         else:
             return False
-                    
+                

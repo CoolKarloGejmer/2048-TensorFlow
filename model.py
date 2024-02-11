@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 class Model:
-    def buildModel(learning_rate,size):
+    def buildModel(learning_rate, size):
         model = tf.keras.Sequential([
             tf.keras.layers.Flatten(input_shape=(size, size)),
             tf.keras.layers.Dense(128, activation='relu'),
@@ -16,11 +16,12 @@ class Model:
         
         return model
 
-    def trainModel(model,feature,label,epochs=10):
+    def trainModel(model,feature,label,score,epochs=10):
 
         model.fit(x=feature,
                 y=label,
-                epochs=epochs)
+                epochs=epochs,
+                sample_weight=score)
         
         return model
     
