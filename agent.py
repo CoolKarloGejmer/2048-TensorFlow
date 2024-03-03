@@ -45,7 +45,7 @@ class Agent:
 
             while running[0]:
                 state = game.grid
-                if np.random.rand() < self.epsilon or generation < 2: #or Model.checkForStutter(self.replay_memory.memory,stutter) == True:
+                if np.random.rand() < self.epsilon or generation < 2 or Model.checkForStutter(self.replay_memory.memory,stutter) == True:
                     action = random.randint(0, 3)
                 else:
                     action = np.argmax(Model.predict(self.model,state,size))
