@@ -3,6 +3,7 @@ from os import getcwd
 from glob import glob
 from enum import Enum
 from re import findall
+import math
 import pygame
 import numpy as np
 import random
@@ -15,26 +16,31 @@ class Direction(Enum):
     DOWN = 3
 
 class Game:
-    def __init__(self, size = 5, width=1500, height=1000):
+    def __init__(self, size = 4, width=1000, height=800, displayGraphics = True):
         pygame.init()
         self.size = size
+        self.displayGraphics = displayGraphics
         self.tileSize = 150
         self.score = 0
         self.step = -1
         
         self.width = max(width, self.size*self.tileSize)
         self.height = max(height, self.size*self.tileSize)
-        self.backgroundColor = (160,160,160)
-        self.screen = self.createScreen()
-        self.borderWidth, self.startPoint = self.getBorderAndStartPoint()
-        self.font = pygame.font.Font(None, int(self.tileSize*0.5))
-        self.drawnTiles = self.drawGrid(borderColor=(0,0,0))
+        if self.displayGraphics == True:
+            self.backgroundColor = (160,160,160)
+            self.screen = self.createScreen()
+            self.borderWidth, self.startPoint = self.getBorderAndStartPoint()
+            self.font = pygame.font.Font(None, int(self.tileSize*0.5))
+            self.drawnTiles = self.drawGrid(borderColor=(0,0,0))
+        else:
+            print('display graphics: ',self.displayGraphics)
 
         self.grid = np.zeros((size,size),dtype=int)
         self.numbersDir = self.getNumbers()
 
         emptySpots = self.getEmptySpots()
-        self.putNumber(emptySpots,self.step)
+        if self.displayGraphics == True:
+            self.putNumber(emptySpots,self.step)
 
     def createScreen(self):
         screen = pygame.display.set_mode( (self.width, self.height) )
@@ -91,14 +97,20 @@ class Game:
 
     def getEmptySpots(self):
         grid = self.grid
-        drawnTiles = self.drawnTiles
         emptySpots = []
 
-        for row in range(self.size):
-            for element in range(self.size):
-                if grid[row][element] == 0:
-                    temp = [drawnTiles[row][element][0],drawnTiles[row][element][1],row,element]
-                    emptySpots.append(temp)
+        if self.displayGraphics == True:
+            drawnTiles = self.drawnTiles
+            for row in range(self.size):
+                for element in range(self.size):
+                    if grid[row][element] == 0:
+                        temp = [drawnTiles[row][element][0],drawnTiles[row][element][1],row,element]
+                        emptySpots.append(temp)
+        else:
+            for row in range(self.size):
+                for element in range(self.size):
+                    if grid[row][element] == 0:
+                        emptySpots.append([0,0,row,element])
 
         return np.array(emptySpots,dtype=int)
     
@@ -111,8 +123,10 @@ class Game:
             else:
                 imageLoad = self.numbersDir[0]
                 imageValue = self.numbersDir[1]
-            imageLoad = pygame.image.load(imageLoad)
-            imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
+            
+            if self.displayGraphics == True:
+                imageLoad = pygame.image.load(imageLoad)
+                imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
         
             if step == -1:
                 spot = random.sample(range(len(emptySpots)), 2)
@@ -120,49 +134,51 @@ class Game:
             else:
                 spot = random.sample(range(len(emptySpots)), 1)
                 spot = emptySpots[spot][:2]
+            
+            if self.displayGraphics == True:
+                for position in spot:
+                    self.screen.blit(imageLoad,(position[0],position[1]))
+                pygame.display.flip()
 
             for position in spot:
-                self.screen.blit(imageLoad,(position[0],position[1]))
                 self.grid[position[2]][position[3]]=imageValue
-            pygame.display.flip()
-            self.step+=1
+        self.step+=1
 
     def updateScreen(self):
-        for row in range(len(self.grid)):
-            for element in range(len(self.grid[row])):
-                outer_rect = pygame.Rect(self.drawnTiles[row][element][0] + self.borderWidth, self.drawnTiles[row][element][1] + self.borderWidth,
-                                   self.tileSize - self.borderWidth*2, self.tileSize - self.borderWidth*2)
-                pygame.draw.rect(self.screen,(160,160,160),outer_rect)
-                if self.grid[row][element] in self.numbersDir:
-                    index = self.numbersDir.index(self.grid[row][element])
-                    imageLoad = self.numbersDir[index-1]
-                    imageLoad = pygame.image.load(imageLoad)
-                    imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
-                    self.screen.blit(imageLoad,(self.drawnTiles[row][element][0],self.drawnTiles[row][element][1]))
-                    
-
-
-        pygame.display.flip()
-        return
+        if self.displayGraphics == True:
+            for row in range(len(self.grid)):
+                for element in range(len(self.grid[row])):
+                    outer_rect = pygame.Rect(self.drawnTiles[row][element][0] + self.borderWidth, self.drawnTiles[row][element][1] + self.borderWidth,
+                                    self.tileSize - self.borderWidth*2, self.tileSize - self.borderWidth*2)
+                    pygame.draw.rect(self.screen,(160,160,160),outer_rect)
+                    if self.grid[row][element] in self.numbersDir:
+                        index = self.numbersDir.index(self.grid[row][element])
+                        imageLoad = self.numbersDir[index-1]
+                        imageLoad = pygame.image.load(imageLoad)
+                        imageLoad = pygame.transform.scale(imageLoad, (self.tileSize,self.tileSize))
+                        self.screen.blit(imageLoad,(self.drawnTiles[row][element][0],self.drawnTiles[row][element][1]))
+                        
+            pygame.display.flip()
 
     def moveNonZero(self,row):
         updatedRow=[]
         for element in row:
-                if element != 0:
-                    updatedRow.append(element)
+            if element != 0:
+                updatedRow.append(element)
         
         return updatedRow
 
 
-    def merge(self,updatedRow):
+    def merge(self,updatedRow,getBestAction):
         try:
             for i in range(len(updatedRow) - 1):
                 updatedRow = self.moveNonZero(updatedRow)
                 if updatedRow[i] == updatedRow[i + 1]:
                     self.score += updatedRow[i]
                     score = self.font.render("Score: "+str(self.score),True,(0,0,0))
-                    pygame.draw.rect(self.screen,self.backgroundColor,(self.startPoint[0], self.startPoint[1]-int(self.tileSize*0.35),self.width,int(self.tileSize*0.35)))
-                    self.screen.blit(score,(self.startPoint[0], self.startPoint[1]-int(self.tileSize*0.35)))
+                    if getBestAction == False and self.displayGraphics == True:
+                        pygame.draw.rect(self.screen,self.backgroundColor,(self.startPoint[0], self.startPoint[1]-int(self.tileSize*0.35),self.width,int(self.tileSize*0.35)))
+                        self.screen.blit(score,(self.startPoint[0], self.startPoint[1]-int(self.tileSize*0.35)))
                     updatedRow[i] *= 2
                     updatedRow[i + 1] = 0
         except:
@@ -186,7 +202,7 @@ class Game:
         updatedGrid = []
         for row in grid:
             updatedRow = self.moveNonZero(row)
-            updatedRow = self.merge(updatedRow)
+            updatedRow = self.merge(updatedRow,False)
             while len(updatedRow) != self.size:
                 updatedRow.append(0)
             updatedGrid.append(updatedRow)
@@ -214,8 +230,28 @@ class Game:
         if (grid == self.grid).all():
             return False
         else:
-            self.putNumber(self.getEmptySpots(),self.step)
+            if self.displayGraphics == True:
+                self.putNumber(self.getEmptySpots(),self.step)
             return True
+        
+    def checkForMoves(self):
+        for row in self.grid:
+            if len(set(row)) != len(row):
+                for i in range(len(row)):
+                    try:
+                        if row[i] == row[i+1]:
+                            return True
+                    except:
+                        continue
+        for column in np.rot90(self.grid):
+            if len(set(column)) != len(column):
+                for i in range(len(column)):
+                    try:
+                        if column[i] == column[i+1]:
+                            return True
+                    except:
+                        continue
+        return False
 
     def play(self,action):
         keepRunning = True
@@ -223,28 +259,24 @@ class Game:
         changed = True
 
         emptySpots = self.getEmptySpots()
-        if self.isGameOver(emptySpots,action) != True:
+
+        if self.isGameOver(emptySpots) == False:
             changed = self.move(action)
         else:
             return [False,keepRunning]
         
-        if changed:
+        if changed and self.displayGraphics == True:
             self.updateScreen()
-        
+
         return [True,keepRunning]
 
-    def isGameOver(self,emptySpots,action):
+    def isGameOver(self,emptySpots):
         if emptySpots.size == 0:
-            self.move(action)
-            if self.getEmptySpots().size == 0:
-                for i in range(3):
-                    self.move(i)
-                    if self.getEmptySpots().size != 0:
-                        self.updateScreen()
-                        return False
-            print('game over')
-            print(self.score)
+            if self.checkForMoves() == True:
+                return False
             return True
         else:
             return False
+
+
                 
